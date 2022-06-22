@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Javascriptだけで作る簡易な検索システム</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+</head>
+
+<body>
+
+    <div id="app">
+
+        <div class="bg-light py-5">
+            <div class="container">
+                <div class="row">
+                    <div class="col">
+                        <h1>Javascriptだけで作る簡易な検索システム</h1>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                <div class="col-4 mt-4" v-for="(item,i) in index">
+                    <label :for="'search-' + i">{{ item }}</label>
+                    <input type="text" class="form-control" :id="'search-' + i" v-model="query['query-' + i]"
+                        v-on:input="searchExec">
+                </div>
+            </div>
+
+            <div class="row border-top mt-5 pt-5">
+
+                <table class="table text-center">
+                    <thead>
+                        <tr>
+                            <th v-for="item in index">
+                                {{ item }}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="item in resultData">
+                            <td v-for="item2 in item">
+                                {{ item2.value }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2" crossorigin="anonymous">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script>
+
+
+
+    <script>
+        const vm = new Vue({
+            el: '#app',
+            data: function () {
+                return {
+                    index: [],
+                    data: [],
+                    query: {},
+                    result: []
+                }
+            },
+            //mounted()関数をasyncにする（トップレベルawaitが使えるようになれば不要になるはず）
+            async mounted() {
+                const vm = this;
+                //外部HTMLを取得
+                const data = await fetch('search.html')
+
+                console.log(data)
+
+                //取得した結果を一旦テキストとし、そのテキストを扱いやすいようにDOMにする
+                const html = await data.text()
+                const dom = new DOMParser().parseFromString(html, 'text/html');
+
+                //検索対象となるIDを指定
+                const domTarget = dom.querySelector('#searchTarget table')
+
+                //HTMLを扱いやすいJSONにしてdataに保持させる（ここ以降は検索対象テーブルの構成によって異なる）
+                domTarget.querySelectorAll('thead tr th').forEach(function (elem, i) {
+                    vm.index.push(elem.innerHTML)
+                })
+                domTarget.querySelectorAll('tbody tr').forEach(function (elem, i) {
+                    const obj = []
+                    vm.data.push(obj)
+                    elem.querySelectorAll('td').forEach(function (elem2, i2) {
+                        const item = {
+                            name: vm.index[i2],
+                            value: elem2.innerHTML
+                        }
+                        vm.data[i].push(item)
+                    })
+
+                })
+
+            },
+            computed: {
+                resultData() {
+                    const vm = this;
+                    return vm.result.length ? vm.result : vm.data
+                }
+            },
+            methods: {
+                searchExec() {
+                    const vm = this;
+                    vm.$set(vm, 'result', [])
+                    vm.data.forEach(function (elem, i) {
+                        let flg = [];
+                        Object.keys(vm.query).forEach(function (i2) {
+                            const index = i2.replace('query-', '')
+                            flg.push(elem[index].value.indexOf(vm.query[i2]) !== -1)
+                        })
+                        if (
+                            flg.every(function (val) {
+                                return val
+                            })
+                        ) {
+                            vm.result.push(elem);
+                        }
+
+                    })
+                }
+
+            }
+        })
+    </script>
+
+</body>
+
+</html>
